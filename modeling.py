@@ -24,8 +24,8 @@ from keras.layers import Dense, Input, GlobalMaxPooling1D
 from keras.layers import Conv1D, MaxPooling1D, Embedding
 from keras.models import Model
 
-BASE_DIR = '~/702-medication-project/'
-GLOVE_DIR = '~/702-medication-project/glove.6B/'
+BASE_DIR = '/home/pzs2/702/702-medication-project'
+GLOVE_DIR = '/home/pzs2/702/702-medication-project/glove.6B/'
 MAX_SEQUENCE_LENGTH = 300
 MAX_NUM_WORDS = 20000
 EMBEDDING_DIM = 50
@@ -37,7 +37,7 @@ VALIDATION_SPLIT = 0.2
 print('Indexing word vectors.')
 
 embeddings_index = {}
-with open(os.path.join(GLOVE_DIR, 'glove.6B.50d.txt'), encoding="utf-8") as f:
+with open(os.path.join(GLOVE_DIR, 'glove.6B.50d.txt')) as f:
     for line in f:
         values = line.split()
         word = values[0]

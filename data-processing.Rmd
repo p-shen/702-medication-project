@@ -1,0 +1,223 @@
+---
+title: "data_processing"
+author: "Peter Shen"
+date: '2018-04-15'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(caret)
+```
+
+# Preprocessing
+
+## from annotations, get all medications that are given with a reason
+```{r}
+annot <- list.files(path="data/annotations_ground_truth/converted.noduplicates.sorted/")
+
+cols <- c("m", "do", "mo", "f", "du", "r", "ln")
+
+df <- data.frame(matrix(ncol = 7, nrow = 0))
+colnames(df) <- cols
+
+for(file in annot){
+  id <- strsplit(file, split = ".", fixed = T)[[1]][1]
+  file <- paste0('data/annotations_ground_truth/converted.noduplicates.sorted/', file)
+  df.this <- read.table(file, sep='|', stringsAsFactors = F, quote = "")
+  df.this <- df.this[,seq(1,13,2)]
+  colnames(df.this) <- cols
+  df.this$id <- id
+  df.this <- df.this %>% filter(r != 'r="nm"')
+  
+  df <- df %>% bind_rows(df.this)
+}
+
+# gold.annot <- list.files(path="data/training_ground_truth/")
+
+# for(file in gold.annot){
+#   id <- strsplit(file, split = ".", fixed = T)[[1]][1]
+#   file <- paste0('data/training_ground_truth/', file)
+#   df.this <- read.table(file, sep='|', stringsAsFactors = F, quote = "")
+#   df.this <- df.this[,seq(1,13,2)]
+#   colnames(df.this) <- cols
+#   df.this$id <- id
+#   df.this <- df.this %>% filter(r != 'r="nm"')
+#   
+#   df <- df %>% bind_rows(df.this)
+# }
+
+df <- df %>% select(id, m, r)
+```
+
+## from the reasons, select the lines that contained the reasons
+```{r}
+parseLineNumber <- function(line) {
+  return(strsplit(line, ":")[[1]][1])
+}
+
+getLines <- function(row) {
+  lines <- unlist(strsplit(trimws(strsplit(row, '"')[[1]][3], "both"), " "))
+  lineNumbers <- sapply(lines, parseLineNumber)
+  uniqueLines <- unique(lineNumbers)
+  
+  return(paste(uniqueLines, collapse = " "))
+}
+
+getTokens <- function(row) {
+  tokens <- unlist(strsplit(trimws(strsplit(row, '"')[[1]][3], "both"), " "))
+  tokens <- unlist(strsplit(tokens, " "))
+  tokens <- unique(tokens)
+  return(paste(tokens, collapse = " "))
+}
+
+getContent <- function(row) {
+  return(strsplit(row, '"')[[1]][2])
+}
+
+df$mcontent <- sapply(df$m, getContent)
+df$mtokens <- sapply(df$m, getTokens)
+df$mlines <- sapply(df$m, getLines)
+
+df$rcontent <- sapply(df$r, getContent)
+df$rtokens <- sapply(df$r, getTokens)
+df$rlines <- sapply(df$r, getLines)
+
+# remove periods from strings
+df$mcontent <- gsub("[.]", "", df$mcontent)
+df$rcontent <- gsub("[.]", "", df$rcontent)
+
+# filter out nms
+df <- df %>% filter(rcontent != 'nm')
+
+df <- df %>% 
+  select(id, mcontent, mtokens, mlines, rcontent, rtokens, rlines) %>% 
+  distinct()
+
+```
+
+## which drugs are present?
+```{r}
+group_by(df, mcontent) %>% summarise(count=n()) %>% arrange(desc(count))
+```
+
+## get the sentences around the reasons
+```{r}
+getReasonsFromFile <- function(row) {
+  file <- row["id"]
+  content <- read_file(paste0("data/test_files/", file))
+  content <- gsub("\n", " ", content)
+  content.sentences <- unlist(strsplit(content, "[.]"))
+  content.sentences <- tolower(content.sentences)
+  index <- grep(tolower(row["rcontent"]), content.sentences)
+  return(paste(content.sentences[index], collapse = " "))
+}
+
+df$rsentences <- apply(df, 1, getReasonsFromFile)
+```
+
+## map drugs to USPDC drug classes
+```{r}
+uspdc <- read.csv("uspdc-2018-alignment-file.csv", header = T, stringsAsFactors = F)
+uspdc$Name <- tolower(uspdc$Name)
+
+getUSPClass <- function(drug) {
+  matchedDrugs <- grep(drug, uspdc$Name, fixed = T)
+  class <- uspdc[matchedDrugs[1],]$USP.Category
+  return(class)
+}
+
+df$USPClass <- sapply(df$mcontent, getUSPClass)
+
+```
+
+
+```{r}
+df[is.na(df$USPClass),] %>% group_by(mcontent) %>% summarise(count=n()) %>% arrange(desc(count)) %>% filter(count>5)
+```
+
+## manually map some data
+```{r}
+df$USPClass[df$mcontent == "antibiotics"] <- "Antibacterials"
+df$USPClass[df$mcontent == "percocet"] <- "Analgesics"
+df$USPClass[df$mcontent == "nitroglycerin 1/150 ( 04 mg )"] <- "Cardiovascular Agents"
+df$USPClass[df$mcontent == "tylenol ( acetaminophen )"] <- "Analgesics"
+df$USPClass[df$mcontent == "dobutamine"] <- "Cardiovascular Agents"
+df$USPClass[df$mcontent == "dopamine"] <- "Cardiovascular Agents"
+df$USPClass[df$mcontent == "nph"] <- "Blood Glucose Regulators"
+df$USPClass[df$mcontent == "albuterol inhaler"] <- "Respiratory Tract/Pulmonary Agents"
+df$USPClass[df$mcontent == "albuterol nebulizer"] <- "Respiratory Tract/Pulmonary Agents"
+df$USPClass[df$mcontent == "ntg"] <- "Cardiovascular Agents"
+df$USPClass[df$mcontent == "bb"] <- "Cardiovascular Agents"
+df$USPClass[df$mcontent == "human insulin"] <- "Blood Glucose Regulators"
+df$USPClass[df$mcontent == "argatroban"] <- "Blood Products/Modifiers/Volume Expanders"
+df$USPClass[df$mcontent == "ativan ( lorazepam )"] <- "Anticonvulsants"
+df$USPClass[df$mcontent == "dulcolax"] <- "Anti-Constipation Agents"
+df$USPClass[df$mcontent == "insulin aspart"] <- "Blood Glucose Regulators"
+df$USPClass[df$mcontent == "insulin regular human"] <- "Blood Glucose Regulators"
+df$USPClass[df$mcontent == "kcl"] <- "Gastrointestinal Agents"
+df$USPClass[df$mcontent == "nitroglycerins"] <- "Cardiovascular Agents"
+df$USPClass[df$mcontent == "novolog ( insulin aspart )"] <- "Blood Glucose Regulators"
+df$USPClass[df$mcontent == "maalox-tablets quick dissolve/chewable"] <- "Gastrointestinal Agents"
+df$USPClass[df$mcontent == "maalox"] <- "Gastrointestinal Agents"
+df$USPClass[df$mcontent == "colace"] <- "Gastrointestinal Agents"
+
+```
+
+## output the cleaned data
+```{r}
+set.seed(123)
+df.output <- df %>% select(USPClass, rsentences) %>% filter(!is.na(USPClass)) %>% distinct()
+```
+
+## select rows with more than 5 data points
+```{r}
+multi.classes <- df.output %>% group_by(USPClass) %>% summarise(count=n()) %>% arrange(desc(count)) %>% filter(count>5)
+df.output <- df.output[df.output$USPClass %in% multi.classes$USPClass, ]
+```
+
+
+``` {r}
+df.output$USPClass <- factor(df.output$USPClass)
+inTrain <-  createDataPartition(df.output$USPClass, p = 0.75, list = FALSE)
+dfTrain <- df.output[inTrain,]
+dfTest <- df.output[-inTrain,]
+write.table(df.output$rsentences, file="data_x.txt", row.names = F, col.names = F, sep = "\t")
+write.table(as.numeric(df.output$USPClass)-1, file="data_y.txt", row.names = F, col.names = F, sep = "\t")
+# write.table(dfTest$rsentences, file="test_x.txt", row.names = F, col.names = F, sep = "\t")
+# write.table(dfTest$USPClass, file="test_y.txt", row.names = F, col.names = F, sep = "\t")
+```
+
+# Training
+
+## loading datasets
+```{r}
+library(keras)
+train_data <- dfTrain$rsentences
+train_labels <- dfTrain$USPClass
+test_data <- dfTest$rsentences
+test_labels <- dfTest$USPClass
+
+max_words <- 20
+epochs <- 10
+num_classes <- length(levels(train_labels))
+```
+
+```{r}
+lev <- levels(df.output$USPClass)
+out <- c()
+for(i in 1:length(lev)) {
+  out <- append(out, paste0('"', lev[i], "\":", i-1))
+}
+
+write(paste(out, collapse = ",\n"), "output.txt")
+```
+
+```{r}
+f <- read_file("data_y.txt")
+f.str <- strsplit(f, ",")[[1]]
+length(levels(factor(f.str)))
+```
+
+

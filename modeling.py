@@ -1,4 +1,8 @@
 
+# coding: utf-8
+
+# In[73]:
+
 '''This script loads pre-trained word embeddings (GloVe embeddings)
 into a frozen Keras Embedding layer, and uses it to
 train a text classification model on the 20 Newsgroup dataset
@@ -17,6 +21,7 @@ from __future__ import print_function
 import os
 import sys
 import numpy as np
+from keras.callbacks import TensorBoard
 from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
 from keras.utils import to_categorical
@@ -24,12 +29,15 @@ from keras.layers import Dense, Input, GlobalMaxPooling1D
 from keras.layers import Conv1D, MaxPooling1D, Embedding
 from keras.models import Model
 
-BASE_DIR = '/home/pzs2/702/702-medication-project'
-GLOVE_DIR = '/home/pzs2/702/702-medication-project/glove.6B/'
-MAX_SEQUENCE_LENGTH = 300
+BASE_DIR = '/Users/Peter/BMI_Code_Repos/702/702-medication-project/'
+GLOVE_DIR = '/Users/Peter/BMI_Code_Repos/702/702-medication-project/glove.6B/'
+MAX_SEQUENCE_LENGTH = 1000
 MAX_NUM_WORDS = 20000
 EMBEDDING_DIM = 50
 VALIDATION_SPLIT = 0.2
+
+
+# In[60]:
 
 # first, build index mapping words in the embeddings set
 # to their embedding vector
@@ -37,7 +45,7 @@ VALIDATION_SPLIT = 0.2
 print('Indexing word vectors.')
 
 embeddings_index = {}
-with open(os.path.join(GLOVE_DIR, 'glove.6B.50d.txt')) as f:
+with open(os.path.join(GLOVE_DIR, 'glove.6B.50d.txt'), encoding="utf-8") as f:
     for line in f:
         values = line.split()
         word = values[0]
@@ -46,6 +54,8 @@ with open(os.path.join(GLOVE_DIR, 'glove.6B.50d.txt')) as f:
 
 print('Found %s word vectors.' % len(embeddings_index))
 
+
+# In[61]:
 
 texts_file = open("data_x.txt", "r")
 texts = texts_file.readlines()
@@ -58,6 +68,8 @@ print(len(labels))
 labels_file.close()
 
 
+# In[62]:
+
 # second, prepare text samples and their labels
 print('Processing text dataset')
 
@@ -65,22 +77,9 @@ print('Processing text dataset')
 labels_index = {
     "Analgesics":0,
     "Antibacterials":1,
-    "Anticonvulsants":2,
-    "Antidepressants":3,
-    "Antiemetics":4,
-    "Antifungals":5,
-    "Antipsychotics":6,
-    "Antivirals":7,
-    "Blood Glucose Regulators":8,
-    "Blood Products/Modifiers/Volume Expanders":9,
-    "Cardiovascular Agents":10,
-    "Electrolytes/Minerals/Metals/Vitamins":11,
-    "Gastrointestinal Agents":12,
-    "Hormonal Agents, Stimulant/Replacement/Modifying (Adrenal)":13,
-    "Hormonal Agents, Stimulant/Replacement/Modifying (Thyroid)":14,
-    "Ophthalmic Agents":15,
-    "Respiratory Tract/Pulmonary Agents":16,
-    "Sleep Disorder Agents":17
+    "Blood Products/Modifiers/Volume Expanders":2,
+    "Cardiovascular Agents":3,
+    "Gastrointestinal Agents":4
 }
 
 # finally, vectorize the text samples into a 2D integer tensor
@@ -110,6 +109,8 @@ x_val = data[-num_validation_samples:]
 y_val = labels[-num_validation_samples:]
 
 
+# In[63]:
+
 print('Preparing embedding matrix.')
 
 # prepare embedding matrix
@@ -131,13 +132,19 @@ embedding_layer = Embedding(num_words,
                             input_length=MAX_SEQUENCE_LENGTH,
                             trainable=False)
 
-
-print('Training model.')
-
-# train a 1D convnet with global maxpooling
 sequence_input = Input(shape=(MAX_SEQUENCE_LENGTH,), dtype='int32')
 embedded_sequences = embedding_layer(sequence_input)
+
+
+# In[74]:
+
+print('Training model.')
+tbCallBack = TensorBoard(log_dir='./Graph', histogram_freq=0, write_graph=True, write_images=True)
+
+# train a 1D convnet with global maxpooling
 x = Conv1D(128, 5, activation='relu')(embedded_sequences)
+x = MaxPooling1D(5)(x)
+x = Conv1D(128, 5, activation='relu')(x)
 x = MaxPooling1D(5)(x)
 x = Conv1D(128, 5, activation='relu')(x)
 x = MaxPooling1D(5)(x)
@@ -154,13 +161,16 @@ model.compile(loss='categorical_crossentropy',
 model.fit(x_train, y_train,
           batch_size=128,
           epochs=500,
-          validation_data=(x_val, y_val), verbose=0)
+          validation_data=(x_val, y_val),
+          callbacks=[tbCallBack], 
+          verbose=0)
 
 loss, acc = model.evaluate(x_val, y_val,
                            batch_size=128)
 print('Test loss / test accuracy = {:.4f} / {:.4f}'.format(loss, acc))
 
 
-model.save('model1.h5')
+# In[163]:
 
+model.save('model1.h5')
 

@@ -160,7 +160,7 @@ model.compile(loss='categorical_crossentropy',
 
 model.fit(x_train, y_train,
           batch_size=128,
-          epochs=500,
+          epochs=1000,
           validation_data=(x_val, y_val),
           callbacks=[tbCallBack], 
           verbose=0)

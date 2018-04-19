@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[38]:
+# In[53]:
 
 '''This script loads pre-trained word embeddings (GloVe embeddings)
 into a frozen Keras Embedding layer, and uses it to
@@ -23,7 +23,7 @@ from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
 from keras.utils import to_categorical
 from keras.layers import Dense, Input, GlobalMaxPooling1D
-from keras.layers import Conv1D, MaxPooling1D, Embedding, Dropout, GaussianNoise
+from keras.layers import Conv1D, MaxPooling1D, Embedding, Dropout, GaussianNoise, regularizers
 from keras.models import Model
 from keras.models import load_model
 import tensorflowjs as tfjs
@@ -44,7 +44,7 @@ EPOCHS = 750
 BATCH_SIZE = 64
 
 
-# In[26]:
+# In[45]:
 
 # first, build index mapping words in the embeddings set
 # to their embedding vector
@@ -60,7 +60,7 @@ with open(os.path.join(GLOVE_DIR, GLOVE_EMBEDDING)) as f:
 print('Found %s word vectors.' % len(embeddings_index))
 
 
-# In[28]:
+# In[46]:
 
 texts_file = open("data_x.txt", "r")
 texts = texts_file.readlines()
@@ -71,7 +71,7 @@ labels = labels_file.readlines()
 labels_file.close()
 
 
-# In[29]:
+# In[47]:
 
 # second, prepare text samples and their labels
 print('Processing text dataset')
@@ -111,7 +111,7 @@ x_val = data[-num_validation_samples:]
 y_val = labels[-num_validation_samples:]
 
 
-# In[30]:
+# In[48]:
 
 # prepare embedding matrix
 num_words = min(MAX_NUM_WORDS, len(word_index) + 1)
@@ -136,7 +136,7 @@ sequence_input = Input(shape=(MAX_SEQUENCE_LENGTH,), dtype='float32')
 embedded_sequences = embedding_layer(sequence_input)
 
 
-# In[35]:
+# In[55]:
 
 print('Training model.')
 tbCallBack = TensorBoard(log_dir='./Graph/{}/'.format(st), histogram_freq=0, write_graph=True, write_images=True)
@@ -145,9 +145,7 @@ tbCallBack = TensorBoard(log_dir='./Graph/{}/'.format(st), histogram_freq=0, wri
 x = Conv1D(128, 5, activation='relu')(embedded_sequences)
 x = GaussianNoise(0.25)(x)
 x = MaxPooling1D(5)(x)
-x = Conv1D(128, 5, activation='relu')(x)
-x = MaxPooling1D(5)(x)
-x = Conv1D(128, 5, activation='relu')(x)
+x = Conv1D(128, 5, activation='relu', kernel_regularizer=regularizers.l1(0.05))(x)
 x = GlobalMaxPooling1D()(x)
 x = Dropout(0.5)(x)
 x = Dense(128, activation='relu')(x)
@@ -156,14 +154,14 @@ preds = Dense(len(labels_index), activation='softmax')(x)
 model = Model(sequence_input, preds)
 model.compile(loss='categorical_crossentropy',
               optimizer='adagrad',
-              metrics=['acc'])
+              metrics=['acc'], )
 
 model.fit(x_train, y_train,
           batch_size=BATCH_SIZE,
           epochs=EPOCHS,
           validation_data=(x_val, y_val),
           callbacks=[tbCallBack], 
-          verbose=0)
+          verbose=1)
 
 loss, acc = model.evaluate(x_val, y_val,
                            batch_size=64)
@@ -172,6 +170,8 @@ print('Test loss / test accuracy = {:.4f} / {:.4f}'.format(loss, acc))
 
 
 # In[79]:
+
+os.makedirs(SAVE_DIR)
 
 model.save(SAVE_DIR + "model.h5")
 

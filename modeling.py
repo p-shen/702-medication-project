@@ -48,7 +48,7 @@ BATCH_SIZE = 128
 # to their embedding vector
 
 embeddings_index = {}
-with open(os.path.join(GLOVE_DIR, 'glove.6B.100d.txt'), encoding="utf-8") as f:
+with open(os.path.join(GLOVE_DIR, 'glove.6B.100d.txt')) as f:
     for line in f:
         values = line.split()
         word = values[0]

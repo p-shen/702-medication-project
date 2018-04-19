@@ -1,5 +1,4 @@
 "Analgesics":0,
 "Antibacterials":1,
 "Blood Products/Modifiers/Volume Expanders":2,
-"Cardiovascular Agents":3,
-"Gastrointestinal Agents":4
+"Cardiovascular Agents":3

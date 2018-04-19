@@ -1,19 +1,15 @@
 
 # coding: utf-8
 
-# In[73]:
+# In[68]:
 
 '''This script loads pre-trained word embeddings (GloVe embeddings)
 into a frozen Keras Embedding layer, and uses it to
-train a text classification model on the 20 Newsgroup dataset
-(classification of newsgroup messages into 20 different categories).
+train a text classification model.
 
 GloVe embedding data can be found at:
 http://nlp.stanford.edu/data/glove.6B.zip
 (source page: http://nlp.stanford.edu/projects/glove/)
-
-20 Newsgroup data can be found at:
-http://www.cs.cmu.edu/afs/cs.cmu.edu/project/theo-20/www/data/news20.html
 '''
 
 from __future__ import print_function
@@ -21,20 +17,29 @@ from __future__ import print_function
 import os
 import sys
 import numpy as np
+import json
 from keras.callbacks import TensorBoard
 from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
 from keras.utils import to_categorical
 from keras.layers import Dense, Input, GlobalMaxPooling1D
-from keras.layers import Conv1D, MaxPooling1D, Embedding
+from keras.layers import Conv1D, MaxPooling1D, Embedding, Dropout
 from keras.models import Model
+from keras.models import load_model
+import tensorflowjs as tfjs
+import datetime
+import time
 
-BASE_DIR = '/home/pzs2/702/702-medication-project'
-GLOVE_DIR = '/home/pzs2/702/702-medication-project/glove.6B/'
+st = datetime.datetime.fromtimestamp(time.time()).strftime('%Y_%m_%d')
+
+BASE_DIR = './'
+GLOVE_DIR = BASE_DIR + 'glove.6B/'
 MAX_SEQUENCE_LENGTH = 1000
 MAX_NUM_WORDS = 20000
-EMBEDDING_DIM = 50
+EMBEDDING_DIM = 100
 VALIDATION_SPLIT = 0.2
+EPOCHS = 750
+BATCH_SIZE = 128
 
 
 # In[60]:
@@ -42,10 +47,8 @@ VALIDATION_SPLIT = 0.2
 # first, build index mapping words in the embeddings set
 # to their embedding vector
 
-print('Indexing word vectors.')
-
 embeddings_index = {}
-with open(os.path.join(GLOVE_DIR, 'glove.6B.50d.txt')) as f:
+with open(os.path.join(GLOVE_DIR, 'glove.6B.100d.txt'), encoding="utf-8") as f:
     for line in f:
         values = line.split()
         word = values[0]
@@ -59,12 +62,10 @@ print('Found %s word vectors.' % len(embeddings_index))
 
 texts_file = open("data_x.txt", "r")
 texts = texts_file.readlines()
-print(len(texts))
 texts_file.close()
 
 labels_file = open("data_y.txt", "r")
 labels = labels_file.readlines()
-print(len(labels))
 labels_file.close()
 
 
@@ -78,8 +79,7 @@ labels_index = {
     "Analgesics":0,
     "Antibacterials":1,
     "Blood Products/Modifiers/Volume Expanders":2,
-    "Cardiovascular Agents":3,
-    "Gastrointestinal Agents":4
+    "Cardiovascular Agents":3
 }
 
 # finally, vectorize the text samples into a 2D integer tensor
@@ -109,9 +109,7 @@ x_val = data[-num_validation_samples:]
 y_val = labels[-num_validation_samples:]
 
 
-# In[63]:
-
-print('Preparing embedding matrix.')
+# In[80]:
 
 # prepare embedding matrix
 num_words = min(MAX_NUM_WORDS, len(word_index) + 1)
@@ -136,7 +134,7 @@ sequence_input = Input(shape=(MAX_SEQUENCE_LENGTH,), dtype='int32')
 embedded_sequences = embedding_layer(sequence_input)
 
 
-# In[74]:
+# In[ ]:
 
 print('Training model.')
 tbCallBack = TensorBoard(log_dir='./Graph', histogram_freq=0, write_graph=True, write_images=True)
@@ -147,30 +145,64 @@ x = MaxPooling1D(5)(x)
 x = Conv1D(128, 5, activation='relu')(x)
 x = MaxPooling1D(5)(x)
 x = Conv1D(128, 5, activation='relu')(x)
-x = MaxPooling1D(5)(x)
-x = Conv1D(128, 5, activation='relu')(x)
 x = GlobalMaxPooling1D()(x)
+x = Dropout(0.5)(x)
 x = Dense(128, activation='relu')(x)
 preds = Dense(len(labels_index), activation='softmax')(x)
 
 model = Model(sequence_input, preds)
 model.compile(loss='categorical_crossentropy',
-              optimizer='rmsprop',
+              optimizer='adagrad',
               metrics=['acc'])
 
 model.fit(x_train, y_train,
-          batch_size=128,
-          epochs=1000,
+          batch_size=BATCH_SIZE,
+          epochs=EPOCHS,
           validation_data=(x_val, y_val),
           callbacks=[tbCallBack], 
           verbose=0)
 
 loss, acc = model.evaluate(x_val, y_val,
-                           batch_size=128)
+                           batch_size=64)
+
 print('Test loss / test accuracy = {:.4f} / {:.4f}'.format(loss, acc))
 
 
-# In[163]:
+# In[79]:
 
-model.save('model1.h5')
+model.save("model_{}.h5".format(st))
+
+
+# In[81]:
+
+# model = load_model('model1.h5')
+
+# write out the model to a tensorflow json object
+# tfjs.converters.save_keras_model(model, "./tfjs-webserver/resources/")
+
+metadata = {
+      'word_index': word_index,
+      'index_from': 1,
+      'max_len': MAX_SEQUENCE_LENGTH,
+      'model_type': "CNN",
+      'vocabulary_size': MAX_NUM_WORDS,
+      'embedding_size': EMBEDDING_DIM,
+      'epochs': EPOCHS,
+      'batch_size': BATCH_SIZE,
+  }
+
+metadata_json_path = './metadata.json'
+json.dump(metadata, open(metadata_json_path, 'wt'))
+
+
+# In[36]:
+
+# text = np.array(['random random ahkdljhf aldksfhj daklhd heart disease cardiovascular'])
+# print(text.shape)
+
+# text = tokenizer.texts_to_sequences(text)
+
+# pred_X = pad_sequences(text, maxlen=MAX_SEQUENCE_LENGTH)
+# len(tokenizer.word_docs)
+# word_index = tokenizer.word_docs
 

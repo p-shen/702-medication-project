@@ -1,3 +1,5 @@
 data/*
 glove.6B/*
 .ipynb_checkpoints/*
+tfjs-webserver/node_modules
+tfjs-webserver/.cache/*

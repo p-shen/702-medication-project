@@ -104,14 +104,22 @@ group_by(df, mcontent) %>% summarise(count=n()) %>% arrange(desc(count))
 
 ## get the sentences around the reasons
 ```{r}
+num.lines <- 3
+
 getReasonsFromFile <- function(row) {
   file <- row["id"]
   content <- read_file(paste0("data/test_files/", file))
-  content <- gsub("\n", " ", content)
-  content.sentences <- unlist(strsplit(content, "[.]"))
-  content.sentences <- tolower(content.sentences)
-  index <- grep(tolower(row["rcontent"]), content.sentences)
-  return(paste(content.sentences[index], collapse = " "))
+  rline <- row['rlines']
+  rline <- as.numeric(unlist(strsplit(rline, " ")))
+  content <- unlist(strsplit(content, "\n"))
+  numLines <- length(content)
+  
+  content <- content[ (max(min(rline), 0)-num.lines) : (min(max(rline), numLines)+num.lines)]
+  
+  content <- tolower(content)
+  content <- gsub('[.|,|!|:]', "", content)
+  
+  return(paste(content, collapse = " "))
 }
 
 df$rsentences <- apply(df, 1, getReasonsFromFile)
@@ -167,41 +175,20 @@ df$USPClass[df$mcontent == "colace"] <- "Gastrointestinal Agents"
 
 ## output the cleaned data
 ```{r}
-set.seed(123)
 df.output <- df %>% select(USPClass, rsentences) %>% filter(!is.na(USPClass)) %>% distinct()
 ```
 
 ## select rows with more than 5 data points
 ```{r}
-multi.classes <- df.output %>% group_by(USPClass) %>% summarise(count=n()) %>% arrange(desc(count)) %>% filter(count>5)
+multi.classes <- df.output %>% filter(!is.na(rsentences)) %>% group_by(USPClass) %>% summarise(count=n()) %>% arrange(desc(count)) %>% filter(count>100)
 df.output <- df.output[df.output$USPClass %in% multi.classes$USPClass, ]
 ```
 
 
 ``` {r}
 df.output$USPClass <- factor(df.output$USPClass)
-inTrain <-  createDataPartition(df.output$USPClass, p = 0.75, list = FALSE)
-dfTrain <- df.output[inTrain,]
-dfTest <- df.output[-inTrain,]
 write.table(df.output$rsentences, file="data_x.txt", row.names = F, col.names = F, sep = "\t")
 write.table(as.numeric(df.output$USPClass)-1, file="data_y.txt", row.names = F, col.names = F, sep = "\t")
-# write.table(dfTest$rsentences, file="test_x.txt", row.names = F, col.names = F, sep = "\t")
-# write.table(dfTest$USPClass, file="test_y.txt", row.names = F, col.names = F, sep = "\t")
-```
-
-# Training
-
-## loading datasets
-```{r}
-library(keras)
-train_data <- dfTrain$rsentences
-train_labels <- dfTrain$USPClass
-test_data <- dfTest$rsentences
-test_labels <- dfTest$USPClass
-
-max_words <- 20
-epochs <- 10
-num_classes <- length(levels(train_labels))
 ```
 
 ```{r}
@@ -212,12 +199,6 @@ for(i in 1:length(lev)) {
 }
 
 write(paste(out, collapse = ",\n"), "output.txt")
-```
-
-```{r}
-f <- read_file("data_y.txt")
-f.str <- strsplit(f, ",")[[1]]
-length(levels(factor(f.str)))
 ```
 
 

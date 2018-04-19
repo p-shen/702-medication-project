@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[1]:
+# In[38]:
 
 '''This script loads pre-trained word embeddings (GloVe embeddings)
 into a frozen Keras Embedding layer, and uses it to
@@ -23,7 +23,7 @@ from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
 from keras.utils import to_categorical
 from keras.layers import Dense, Input, GlobalMaxPooling1D
-from keras.layers import Conv1D, MaxPooling1D, Embedding, Dropout
+from keras.layers import Conv1D, MaxPooling1D, Embedding, Dropout, GaussianNoise
 from keras.models import Model
 from keras.models import load_model
 import tensorflowjs as tfjs
@@ -35,15 +35,16 @@ st = datetime.datetime.fromtimestamp(time.time()).strftime('%Y_%m_%d')
 BASE_DIR = './'
 GLOVE_DIR = BASE_DIR + 'glove.6B/'
 GLOVE_EMBEDDING = 'glove.6B.100d.txt'
+SAVE_DIR = BASE_DIR + 'models/' + st + '/'
 MAX_SEQUENCE_LENGTH = 1000
 MAX_NUM_WORDS = 20000
 EMBEDDING_DIM = 100
 VALIDATION_SPLIT = 0.2
-EPOCHS = 1000
+EPOCHS = 750
 BATCH_SIZE = 64
 
 
-# In[15]:
+# In[26]:
 
 # first, build index mapping words in the embeddings set
 # to their embedding vector
@@ -59,7 +60,7 @@ with open(os.path.join(GLOVE_DIR, GLOVE_EMBEDDING)) as f:
 print('Found %s word vectors.' % len(embeddings_index))
 
 
-# In[3]:
+# In[28]:
 
 texts_file = open("data_x.txt", "r")
 texts = texts_file.readlines()
@@ -70,7 +71,7 @@ labels = labels_file.readlines()
 labels_file.close()
 
 
-# In[4]:
+# In[29]:
 
 # second, prepare text samples and their labels
 print('Processing text dataset')
@@ -110,7 +111,7 @@ x_val = data[-num_validation_samples:]
 y_val = labels[-num_validation_samples:]
 
 
-# In[16]:
+# In[30]:
 
 # prepare embedding matrix
 num_words = min(MAX_NUM_WORDS, len(word_index) + 1)
@@ -135,13 +136,14 @@ sequence_input = Input(shape=(MAX_SEQUENCE_LENGTH,), dtype='float32')
 embedded_sequences = embedding_layer(sequence_input)
 
 
-# In[17]:
+# In[35]:
 
 print('Training model.')
 tbCallBack = TensorBoard(log_dir='./Graph/{}/'.format(st), histogram_freq=0, write_graph=True, write_images=True)
 
 # train a 1D convnet with global maxpooling
 x = Conv1D(128, 5, activation='relu')(embedded_sequences)
+x = GaussianNoise(0.25)(x)
 x = MaxPooling1D(5)(x)
 x = Conv1D(128, 5, activation='relu')(x)
 x = MaxPooling1D(5)(x)
@@ -171,7 +173,7 @@ print('Test loss / test accuracy = {:.4f} / {:.4f}'.format(loss, acc))
 
 # In[79]:
 
-model.save("model_{}.h5".format(st))
+model.save(SAVE_DIR + "model.h5")
 
 word_index = tokenizer.word_index
 metadata = {
@@ -185,6 +187,30 @@ metadata = {
       'batch_size': BATCH_SIZE,
   }
 
-metadata_json_path = './metadata.json'
+metadata_json_path = SAVE_DIR + 'metadata.json'
 json.dump(metadata, open(metadata_json_path, 'wt'))
+
+
+# In[ ]:
+
+# model = load_model('model_2018_04_18.h5')
+
+# write out the model to a tensorflow json object
+# tfjs.converters.save_keras_model(model, "./tfjs-webserver/resources/")
+
+
+# In[22]:
+
+# text = np.array(['infection with streptococcus seen in the left eye'])
+# print(text.shape)
+
+# text = tokenizer.texts_to_sequences(text)
+
+# pred_X = pad_sequences(text, maxlen=MAX_SEQUENCE_LENGTH)
+# pred = model.predict(pred_X)
+
+
+# In[ ]:
+
+
 

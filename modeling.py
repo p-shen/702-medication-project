@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[68]:
+# In[1]:
 
 '''This script loads pre-trained word embeddings (GloVe embeddings)
 into a frozen Keras Embedding layer, and uses it to
@@ -34,21 +34,22 @@ st = datetime.datetime.fromtimestamp(time.time()).strftime('%Y_%m_%d')
 
 BASE_DIR = './'
 GLOVE_DIR = BASE_DIR + 'glove.6B/'
+GLOVE_EMBEDDING = 'glove.6B.100d.txt'
 MAX_SEQUENCE_LENGTH = 1000
 MAX_NUM_WORDS = 20000
 EMBEDDING_DIM = 100
 VALIDATION_SPLIT = 0.2
-EPOCHS = 750
-BATCH_SIZE = 128
+EPOCHS = 1000
+BATCH_SIZE = 64
 
 
-# In[60]:
+# In[15]:
 
 # first, build index mapping words in the embeddings set
 # to their embedding vector
 
 embeddings_index = {}
-with open(os.path.join(GLOVE_DIR, 'glove.6B.100d.txt')) as f:
+with open(os.path.join(GLOVE_DIR, GLOVE_EMBEDDING)) as f:
     for line in f:
         values = line.split()
         word = values[0]
@@ -58,7 +59,7 @@ with open(os.path.join(GLOVE_DIR, 'glove.6B.100d.txt')) as f:
 print('Found %s word vectors.' % len(embeddings_index))
 
 
-# In[61]:
+# In[3]:
 
 texts_file = open("data_x.txt", "r")
 texts = texts_file.readlines()
@@ -69,7 +70,7 @@ labels = labels_file.readlines()
 labels_file.close()
 
 
-# In[62]:
+# In[4]:
 
 # second, prepare text samples and their labels
 print('Processing text dataset')
@@ -109,7 +110,7 @@ x_val = data[-num_validation_samples:]
 y_val = labels[-num_validation_samples:]
 
 
-# In[80]:
+# In[16]:
 
 # prepare embedding matrix
 num_words = min(MAX_NUM_WORDS, len(word_index) + 1)
@@ -130,11 +131,11 @@ embedding_layer = Embedding(num_words,
                             input_length=MAX_SEQUENCE_LENGTH,
                             trainable=False)
 
-sequence_input = Input(shape=(MAX_SEQUENCE_LENGTH,), dtype='int32')
+sequence_input = Input(shape=(MAX_SEQUENCE_LENGTH,), dtype='float32')
 embedded_sequences = embedding_layer(sequence_input)
 
 
-# In[ ]:
+# In[17]:
 
 print('Training model.')
 tbCallBack = TensorBoard(log_dir='./Graph/{}/'.format(st), histogram_freq=0, write_graph=True, write_images=True)
@@ -172,14 +173,7 @@ print('Test loss / test accuracy = {:.4f} / {:.4f}'.format(loss, acc))
 
 model.save("model_{}.h5".format(st))
 
-
-# In[81]:
-
-# model = load_model('model1.h5')
-
-# write out the model to a tensorflow json object
-# tfjs.converters.save_keras_model(model, "./tfjs-webserver/resources/")
-
+word_index = tokenizer.word_index
 metadata = {
       'word_index': word_index,
       'index_from': 1,
@@ -193,16 +187,4 @@ metadata = {
 
 metadata_json_path = './metadata.json'
 json.dump(metadata, open(metadata_json_path, 'wt'))
-
-
-# In[36]:
-
-# text = np.array(['random random ahkdljhf aldksfhj daklhd heart disease cardiovascular'])
-# print(text.shape)
-
-# text = tokenizer.texts_to_sequences(text)
-
-# pred_X = pad_sequences(text, maxlen=MAX_SEQUENCE_LENGTH)
-# len(tokenizer.word_docs)
-# word_index = tokenizer.word_docs
 

@@ -35,12 +35,12 @@ st = datetime.datetime.fromtimestamp(time.time()).strftime('%Y_%m_%d')
 BASE_DIR = './'
 GLOVE_DIR = BASE_DIR + 'glove.6B/'
 GLOVE_EMBEDDING = 'glove.6B.100d.txt'
-SAVE_DIR = BASE_DIR + 'models/' + st + '/'
+SAVE_DIR = BASE_DIR + 'models/' + st + '_3/'
 MAX_SEQUENCE_LENGTH = 1000
 MAX_NUM_WORDS = 20000
 EMBEDDING_DIM = 100
 VALIDATION_SPLIT = 0.2
-EPOCHS = 750
+EPOCHS = 250
 BATCH_SIZE = 64
 
 
@@ -143,7 +143,6 @@ tbCallBack = TensorBoard(log_dir='./Graph/{}/'.format(st), histogram_freq=0, wri
 
 # train a 1D convnet with global maxpooling
 x = Conv1D(128, 5, activation='relu')(embedded_sequences)
-x = GaussianNoise(0.25)(x)
 x = MaxPooling1D(5)(x)
 x = Conv1D(128, 5, activation='relu', kernel_regularizer=regularizers.l1(0.05))(x)
 x = GlobalMaxPooling1D()(x)

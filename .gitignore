@@ -3,4 +3,5 @@ glove.6B/*
 .ipynb_checkpoints/*
 app-frontend/node_modules
 app-frontend/.cache/*
+app-frontend/dist/*
 gscloud/*

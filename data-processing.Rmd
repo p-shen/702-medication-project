@@ -279,3 +279,44 @@ for(i in 1:length(lev)) {
 
 write(paste(out, collapse = ",\n"), "output.txt")
 ```
+
+## Deep Learning with Keras
+
+The section for deep learning was done using Keras framework in Python on O2 cluster.
+
+Parameters:
+
+Parameter     | Value
+--------------|--------------
+Embedding     | GloVe 100
+Sequence Len  | 1000
+Vocab Size    | 20000
+Validation %  | 0.2
+Epochs        | 150
+Batch Size    | 64
+Optimizer     | Adagrad
+
+There are four classes of drugs that are being recommended:
+* Analgesics
+* Antibacterials
+* Blood Products/Modifiers/Volume Expanders
+* Cardiovascular Agents
+
+The neural network architecture is diagrammed below:
+
+![Network Diagram](network_diagram.png)
+
+In table form, the network is:
+
+Layer         | Description
+--------------|--------------
+Embedding     | GloVe 100
+Conv 1D       | 128 ReLU hidden units
+Noise         | 20% Gaussian
+Max Pooling   | 5 units
+Conv 1D       | 128 ReLU hidden units, L1 regularization 0.05
+Glb Max Pool  | Pool over all units
+Dropout       | 50%
+Dense         | 128 ReLU hidden units
+Dense         | Softmax Output layer
+

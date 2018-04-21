@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[53]:
+# In[10]:
 
 '''This script loads pre-trained word embeddings (GloVe embeddings)
 into a frozen Keras Embedding layer, and uses it to
@@ -35,16 +35,16 @@ st = datetime.datetime.fromtimestamp(time.time()).strftime('%Y_%m_%d')
 BASE_DIR = './'
 GLOVE_DIR = BASE_DIR + 'glove.6B/'
 GLOVE_EMBEDDING = 'glove.6B.100d.txt'
-SAVE_DIR = BASE_DIR + 'models/' + st + '_3/'
+SAVE_DIR = BASE_DIR + 'models/' + st + '/'
 MAX_SEQUENCE_LENGTH = 1000
-MAX_NUM_WORDS = 20000
+MAX_NUM_WORDS = 10000
 EMBEDDING_DIM = 100
 VALIDATION_SPLIT = 0.2
-EPOCHS = 250
+EPOCHS = 300
 BATCH_SIZE = 64
 
 
-# In[45]:
+# In[3]:
 
 # first, build index mapping words in the embeddings set
 # to their embedding vector
@@ -60,8 +60,9 @@ with open(os.path.join(GLOVE_DIR, GLOVE_EMBEDDING)) as f:
 print('Found %s word vectors.' % len(embeddings_index))
 
 
-# In[46]:
+# In[6]:
 
+# read in the text files
 texts_file = open("data_x.txt", "r")
 texts = texts_file.readlines()
 texts_file.close()
@@ -71,9 +72,9 @@ labels = labels_file.readlines()
 labels_file.close()
 
 
-# In[47]:
+# In[7]:
 
-# second, prepare text samples and their labels
+# prepare text samples and their labels
 print('Processing text dataset')
 
 # dictionary mapping label name to numeric id
@@ -111,7 +112,7 @@ x_val = data[-num_validation_samples:]
 y_val = labels[-num_validation_samples:]
 
 
-# In[48]:
+# In[8]:
 
 # prepare embedding matrix
 num_words = min(MAX_NUM_WORDS, len(word_index) + 1)
@@ -136,13 +137,14 @@ sequence_input = Input(shape=(MAX_SEQUENCE_LENGTH,), dtype='float32')
 embedded_sequences = embedding_layer(sequence_input)
 
 
-# In[55]:
+# In[9]:
 
 print('Training model.')
 tbCallBack = TensorBoard(log_dir='./Graph/{}/'.format(st), histogram_freq=0, write_graph=True, write_images=True)
 
 # train a 1D convnet with global maxpooling
 x = Conv1D(128, 5, activation='relu')(embedded_sequences)
+x = GaussianNoise(0.2)(x)
 x = MaxPooling1D(5)(x)
 x = Conv1D(128, 5, activation='relu', kernel_regularizer=regularizers.l1(0.05))(x)
 x = GlobalMaxPooling1D()(x)
@@ -160,7 +162,7 @@ model.fit(x_train, y_train,
           epochs=EPOCHS,
           validation_data=(x_val, y_val),
           callbacks=[tbCallBack], 
-          verbose=1)
+          verbose=0)
 
 loss, acc = model.evaluate(x_val, y_val,
                            batch_size=64)
@@ -168,37 +170,44 @@ loss, acc = model.evaluate(x_val, y_val,
 print('Test loss / test accuracy = {:.4f} / {:.4f}'.format(loss, acc))
 
 
-# In[79]:
+# In[11]:
+
+# save the model output
+
+import pickle
 
 os.makedirs(SAVE_DIR)
 
 model.save(SAVE_DIR + "model.h5")
 
-word_index = tokenizer.word_index
-metadata = {
-      'word_index': word_index,
-      'index_from': 1,
-      'max_len': MAX_SEQUENCE_LENGTH,
-      'model_type': "CNN",
-      'vocabulary_size': MAX_NUM_WORDS,
-      'embedding_size': EMBEDDING_DIM,
-      'epochs': EPOCHS,
-      'batch_size': BATCH_SIZE,
-  }
-
-metadata_json_path = SAVE_DIR + 'metadata.json'
-json.dump(metadata, open(metadata_json_path, 'wt'))
+# saving tokenizer
+with open(SAVE_DIR + 'tokenizer.pickle', 'wb') as handle:
+    pickle.dump(tokenizer, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
-# In[ ]:
+# In[31]:
 
-# model = load_model('model_2018_04_18.h5')
+# from keras import backend as K
 
-# write out the model to a tensorflow json object
-# tfjs.converters.save_keras_model(model, "./tfjs-webserver/resources/")
+# model = load_model('models/2018_04_20_10/model.h5')
+
+# K.set_learning_phase(0)
+
+# # drop layers for model output
+# for k in model.layers:
+#     k.trainable=False # freeze all layers
+#     if type(k) is Dropout:
+#         model.layers.remove(k)
+#     if type(k) is GaussianNoise:
+#         model.layers.remove(k)
+        
+# model.compile(loss='categorical_crossentropy',
+#               optimizer='adagrad')
+
+# tfjs.converters.save_keras_model(model, "./tfjs-webserver/dist/resources/")
 
 
-# In[22]:
+# In[1]:
 
 # text = np.array(['infection with streptococcus seen in the left eye'])
 # print(text.shape)
@@ -207,9 +216,4 @@ json.dump(metadata, open(metadata_json_path, 'wt'))
 
 # pred_X = pad_sequences(text, maxlen=MAX_SEQUENCE_LENGTH)
 # pred = model.predict(pred_X)
-
-
-# In[ ]:
-
-
 

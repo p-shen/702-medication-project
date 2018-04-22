@@ -32,24 +32,24 @@ global model, tokenizer, labels
 model, tokenizer, labels = init()
 
 global MAX_SEQUENCE_LENGTH
-MAX_SEQUENCE_LENGTH = 500
+MAX_SEQUENCE_LENGTH = 1000
 
 
 @app.route('/predict/', methods=['POST'])
 def predict():
-	data = request.form['data']
+    data = request.form['data']
 
-	data = np.array([data])
-	text = tokenizer.texts_to_sequences(data)
+    data = np.array([data])
+    text = tokenizer.texts_to_sequences(data)
 
-	pred_X = pad_sequences(text, maxlen=MAX_SEQUENCE_LENGTH)
+    pred_X = pad_sequences(text, maxlen=MAX_SEQUENCE_LENGTH)
 
-	# encode it into a suitable format
-	pred = model.predict(pred_X)
-	index = np.argmax(pred)
-	response = labels[index]
+    # encode it into a suitable format
+    pred = model.predict(pred_X)
+    index = np.argmax(pred)
+    response = labels[index]
 
-	return response
+    return response
 
 
 if __name__ == "__main__":

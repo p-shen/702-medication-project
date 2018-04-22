@@ -302,7 +302,7 @@ There are four classes of drugs that are being recommended:
 * Blood Products/Modifiers/Volume Expanders
 * Cardiovascular Agents
 
-The neural network architecture is diagrammed below:
+The neural network architecture is diagrammed below in figure 1.
 
 ![Network Diagram](network_diagram.png)
 
@@ -310,13 +310,36 @@ In table form, the network is:
 
 Layer         | Description
 --------------|--------------
-Embedding     | GloVe 100
+Embedding     | Input GloVe 100
 Conv 1D       | 128 ReLU hidden units
-Noise         | 20% Gaussian
+Noise         | 15% Gaussian
 Max Pooling   | 5 units
 Conv 1D       | 128 ReLU hidden units, L1 regularization 0.05
 Glb Max Pool  | Pool over all units
-Dropout       | 50%
+Dropout       | 40%
 Dense         | 128 ReLU hidden units
 Dense         | Softmax Output layer
 
+## Results
+With a very limited dataset of roughly 600 data records, the deep learning model ran into big issues with overfitting. However, with added dropout and gaussian nosise with L1 regularization, I was able to control the overtraining a little bit. The model accuracy and loss graphs are shown below:
+
+### Model Validation
+
+Model accuracy between training set and validation set in figure 2.
+
+![Model Accuracy](model_accuracy.png)
+
+Model loss between training and validation set is included in figure 3.
+
+![Model Loss](model_loss.png)
+
+
+### Deployment
+The model is deployed using Flask (Python) to serve the model over a REST API-endpoint with a front-end written in Javascript and HTML to call the API.
+
+A screenshot of the application is included in figure 4.
+
+![Application Screenshot](application_scrn.png)
+
+### Code
+Code is available at: [https://github.com/p-shen/702-medication-project](https://github.com/p-shen/702-medication-project)

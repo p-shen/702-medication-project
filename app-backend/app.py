@@ -31,8 +31,9 @@ global model, tokenizer, labels
 # initialize these variables
 model, tokenizer, labels = init()
 
-global MAX_SEQUENCE_LENGTH
+global MAX_SEQUENCE_LENGTH, THRESHOLD
 MAX_SEQUENCE_LENGTH = 1000
+THRESHOLD = 0.3
 
 
 @app.route('/predict/', methods=['POST'])
@@ -47,7 +48,10 @@ def predict():
     # encode it into a suitable format
     pred = model.predict(pred_X)
     index = np.argmax(pred)
-    response = labels[index]
+    if (pred[0, index] > THRESHOLD):
+        response = labels[index]
+    else:
+        response = "Keep typing..."
 
     return response
 

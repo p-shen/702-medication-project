@@ -1,5 +1,6 @@
 ---
-title: "702 Project - Prescription Recommendations Using Clinical Notes"
+title: "Recommending Medication Therapeutic Class From Clinical Notes"
+subtitle: "BMI 702"
 author: "Peter Shen"
 date: '2018-04-15'
 output: pdf_document
@@ -16,12 +17,12 @@ opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
 
 ## Introduction
 
-Electronic health record systems are primarily designed for hospitals to control their workflows and billing systems. Valuable information relating to health outcomes including medical adherence, effective therapy, and patient response is buried within clinical notes. Being able to extract information out of clinical text can lead to valuable insights and create both social and economic value in promoting data-driven changes to workflows and health management. Clinical texts often include symptomps and diagnostics, which lead to reasons behind changes to medication. However, being able to provide clinical decision support around prescription and therapies would be helpful in guiding physicians towards treatment as well as conducting studies on pharmacovigilence. In this exeperiment, I will be using deep learning to recommend medications based on the input of clinical text.
+Electronic health record systems are primarily designed for hospitals to control their workflows and billing systems. Valuable information relating to health outcomes including medical adherence, effective therapy, and patient response is buried within clinical notes. Being able to extract information out of clinical text can lead to valuable insights and create both social and economic value in promoting data-driven changes to workflows and health management. Clinical texts often include symptoms and diagnostics, which lead to reasons behind changes to medication. However, being able to provide clinical decision support around prescription and therapies would be helpful in guiding physicians towards treatment as well as conducting studies on pharmacovigilance. In this experiment, I will be using deep learning to recommend medications based on the input of clinical text.
 
 ## Data
 
 ### Data Publication
-The data is published by Dr. Ozlem Uzuner at Partners Healthcare with the main focus of creating a  Research Patient Data Repository for a series of NLP Challenges hosted by i2b2. The dataset `2009 Medication Challenge` is released as the third i2b2 workshop by the 'the i2b2 medication challenge team'.
+The data is published by Dr. Ozlem Uzuner at Partners Healthcare with the main focus of creating a  Research Patient Data Repository for a series of NLP Challenges hosted by i2b2. The data set `2009 Medication Challenge` is released as the third i2b2 workshop by the 'the i2b2 medication challenge team'.
 
 ### Motivations
 The team at i2b2 are passionate about leveraging the vast amount of information existing in clinical data in order deliver insights that can lead to better applications that can impact and improve healthcare delivery. i2b2 is built on the use cases developed from Driving Biology Projects, and throughout the years, the information that has been unlocked from both unstructured text as well as other clinical information has been valuable in improving healthcare systems. The NLP project at i2b2 is specifically aimed at improving methods and technologies analyzing unstructured clinical text.
@@ -29,7 +30,7 @@ The team at i2b2 are passionate about leveraging the vast amount of information 
 The medication challenge focuses on extracting the medications prescribed to the patient from discharge summaries, which can collectively provide comprehensive record of medications. The extracted information can be useful for pharmacovigilance, comparative effectiveness studies, and for detecting adverse events.
 
 ### Data Timelines
-The last released data was on the 2014 challenge titled `De-identification and Heart Disease Risk Factors Challenge`[1]. The dataset that I am proposing to use in this project is the `2009 Medication Challenge` in order to get insights and recommendations from prescriptions based on clinical notes.
+The last released data was on the 2014 challenge titled `De-identification and Heart Disease Risk Factors Challenge`[1]. The data set that I am proposing to use in this project is the `2009 Medication Challenge` from the third i2b2 challenge in order to get insights and recommendations from prescriptions based on clinical notes.
 
 ### Data Structure
 The clinical texts were annotated by a medical community, which extracted the following fields from the notes [2]:
@@ -58,14 +59,14 @@ For the purpose of this experiment, only the following data files are needed:
 Partners' policy explicitly forbids reproducing any portion of these notes in oral presentations and/or publications.
 
 ### Ontologies
-No ontologies are used in the dataset itself. However, as part of the preprocessing of the data, the [USP Drug Classification (USPDC) 2018 guidelines](http://www.usp.org/health-quality-safety/usp-drug-classification-system) for medication categorization is used. This is because the dataset is very limited, so in order to get any predictive power, the medications are categorized based on their therapeutic class that is mapped by the USPDC guidelines. From the USPDC website states that these classifications are only used for drug formulary development or review. From their website:
+No ontologies are used in the data set itself. However, as part of the preprocessing of the data, the [USP Drug Classification (USPDC) 2018 guidelines](http://www.usp.org/health-quality-safety/usp-drug-classification-system) for medication categorization is used. This is because the data set is very limited, so in order to get any predictive power, the medications are categorized based on their therapeutic class that is mapped by the USPDC guidelines. From the USPDC website states that these classifications are only used for drug formulary development or review. From their website:
 
 > The USP Drug Classification (USP DC) is an independent drug classification system developed in response to stakeholder input that it would be helpful to have a classification system beyond the Medicare Model Guidelines (MMG), to assist with formulary support outside of Medicare Part D. The Healthcare Quality & Safety Expert Committee goal is to create a comprehensive classification system for use in drug formulary development or review in non-acute or outpatient care settings. This tool has the potential to provide guidance towards the design and comparison of balanced formularies.
 
 This mapping does not include all of the drugs used in clinical settings, but it is good enough to be used in the experiment for categorization purposes.
 
 ### Related Works
-The original challenge was to extract the medications and related metadata from clinical texts. Of the 20 teams, majority of the teams are using a combination of rule-based systems and SVM. Most of the workflows involved tokenization and then feature extraction. The system developed by Jon Patrick and Min Li [3] achieved the highest F-measure (based on precision and recall). This system involved a 3-stage processing: tokenization, feature generation based on conditional random fields (CRF), SVM for local contexts, then feeding these features into a rule-based system using entity and positions. The second highest achieving team from Vanderbilt (Doan et al. 2010)[4] build a system by simply splitting the setences from discharge summaries and using a semantic tagger for each feature. Since all of the teams were using methods involved in classical machine learning (SVM, rule-based systems), exploring the same dataset using deep learning would be a novel approach.
+The original challenge was to extract the medications and related metadata from clinical texts. Of the 20 teams, majority of the teams are using a combination of rule-based systems and SVM. Most of the workflows involved tokenization and then feature extraction. The system developed by Jon Patrick and Min Li [3] achieved the highest F-measure (based on precision and recall). This system involved a 3-stage processing: tokenization, feature generation based on conditional random fields (CRF), SVM for local contexts, then feeding these features into a rule-based system using entity and positions. The second highest achieving team from Vanderbilt (Doan et al. 2010)[4] build a system by simply splitting the sentences from discharge summaries and using a semantic tagger for each feature. Since all of the teams were using methods involved in classical machine learning (SVM, rule-based systems), exploring the same data set using deep learning would be a novel approach.
 
 Modern based approaches to analyzing clinical text does include using deep learning. For example, CliNer [5] used data from i2b2/VA 2010 challenge, employing feature extraction using both linguistic features (e.g., ngrams and wordshapes) and domain knowledge. Another group [6] was able to predict HIV risk assessment using NLP and clinical notes. A comprehensive study [7] shows that comparing different NLP approaches, CNN methods was able to achieve the highest F-score compared to bag of words representation of a note with logistic regression and using an n-gram representation of a note with logistic regression.
 
@@ -321,7 +322,7 @@ Dense         | 128 ReLU hidden units
 Dense         | Softmax Output layer
 
 ## Results
-With a very limited dataset of roughly 600 data records, the deep learning model ran into big issues with overfitting. However, with added dropout and gaussian nosise with L1 regularization, I was able to control the overtraining a little bit. The model accuracy and loss graphs are shown below:
+With a very limited data set of roughly 600 data records, the deep learning model ran into big issues with overfitting. However, with added dropout and Gaussian noise with L1 regularization, I was able to control the over training a little bit. The model accuracy and loss graphs are shown below:
 
 ### Model Validation
 
@@ -335,7 +336,7 @@ Model loss between training and validation set is included in figure 3.
 
 
 ### Deployment
-The model is deployed using Flask (Python) to serve the model over a REST API-endpoint with a front-end written in Javascript and HTML to call the API.
+The model is deployed using Flask (Python) to serve the model over a REST API-endpoint with a front-end written in JavaScript and HTML to call the API.
 
 A screenshot of the application is included in figure 4.
 
